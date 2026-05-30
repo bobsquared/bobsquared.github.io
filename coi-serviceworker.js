@@ -20,16 +20,20 @@ if (typeof window === "undefined") {
     // "only-if-cached" + not same-origin would throw — skip it
     if (e.request.cache === "only-if-cached" && e.request.mode !== "same-origin") return;
 
+    // Only rewrite headers for navigation requests (HTML pages).
+    // COOP/COEP only need to be on the page itself — not on every asset.
+    // Passing sub-resources through unmodified avoids the overhead of
+    // buffering large files (e.g. the 8 MB opening book) through the SW.
+    if (e.request.mode !== "navigate") return;
+
     e.respondWith(
       fetch(e.request)
         .then(response => {
-          // Opaque responses (status 0) can't have headers mutated — pass through
           if (response.status === 0) return response;
 
           const headers = new Headers(response.headers);
           headers.set("Cross-Origin-Opener-Policy",   "same-origin");
           headers.set("Cross-Origin-Embedder-Policy", "require-corp");
-          headers.set("Cross-Origin-Resource-Policy", "cross-origin");
 
           return new Response(response.body, {
             status:     response.status,
@@ -39,7 +43,6 @@ if (typeof window === "undefined") {
         })
         .catch(err => {
           console.error("[coi-sw] fetch error:", err, url);
-          // Return a proper error response instead of undefined
           return new Response("Service worker fetch error", { status: 500 });
         })
     );
