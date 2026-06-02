@@ -12,25 +12,29 @@ self.onmessage = async (e) => {
   const msg = e.data;
 
   if (msg.type === 'init') {
-    importScripts(msg.jsUrl);            // defines self.goCommand
-    ready = self.goCommand({
-      locateFile: () => msg.wasmUrl,
-      print: (line) => {
-        const m = INFO_RE.exec(line);
-        if (m) {
-          self.postMessage({
-            type: 'info',
-            depth: +m[1],
-            seldepth: +m[2],
-            scoreType: m[3],
-            score: +m[4],
-          });
-        }
-      },
-      printErr: () => {},
-    }).then((M) => { Module = M; });
-    await ready;
-    self.postMessage({ type: 'ready' });
+    try {
+      importScripts(msg.jsUrl);          // defines self.goCommand
+      ready = self.goCommand({
+        locateFile: () => msg.wasmUrl,
+        print: (line) => {
+          const m = INFO_RE.exec(line);
+          if (m) {
+            self.postMessage({
+              type: 'info',
+              depth: +m[1],
+              seldepth: +m[2],
+              scoreType: m[3],
+              score: +m[4],
+            });
+          }
+        },
+        printErr: () => {},
+      }).then((M) => { Module = M; });
+      await ready;
+      self.postMessage({ type: 'ready' });
+    } catch (err) {
+      self.postMessage({ type: 'initerror', error: String(err && err.message || err) });
+    }
     return;
   }
 
